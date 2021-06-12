@@ -5,6 +5,7 @@ go 1.14
 replace google.golang.org/grpc => google.golang.org/grpc v1.32.0
 
 require (
+	github.com/casbin/casbin v1.9.1
 	github.com/cloudflare/cfssl v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.2
 	github.com/gorilla/mux v1.8.0
