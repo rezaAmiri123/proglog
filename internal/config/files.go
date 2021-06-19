@@ -13,7 +13,7 @@ var (
 	RootClientKeyFile = configFile("root-client-key.pem")
 	NobodyClientCertFile = configFile("nobody-client.pem")
 	NobodyClientKeyFile = configFile("nobody-client-key.pem")
-	ACLModeFile = configFile("model.conf")
+	ACLModelFile = configFile("model.conf")
 	ACLPolicyFile = configFile("policy.csv")
 )
 

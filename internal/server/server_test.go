@@ -73,7 +73,7 @@ func setupTest(t *testing.T, fn func(config *Config)) (
 		api.LogClient,
 		[]grpc.DialOption,
 	) {
-		tlsConfig, err := config.SetupTLConfig(config.TLSConfig{
+		tlsConfig, err := config.SetupTLSConfig(config.TLSConfig{
 			CertFile: crtPath,
 			KeyFile:  keyPath,
 			CAFile:   config.CAFile,
@@ -101,7 +101,7 @@ func setupTest(t *testing.T, fn func(config *Config)) (
 		config.NobodyClientKeyFile,
 	)
 
-	serverTLSConfig, err := config.SetupTLConfig(config.TLSConfig{
+	serverTLSConfig, err := config.SetupTLSConfig(config.TLSConfig{
 		CertFile:      config.ServerCertFile,
 		KeyFile:       config.ServerKeyFile,
 		CAFile:        config.CAFile,
@@ -117,7 +117,7 @@ func setupTest(t *testing.T, fn func(config *Config)) (
 	clog, err := log.NewLog(dir, log.Config{})
 	require.NoError(t, err)
 
-	authorizer := auth.New(config.ACLModeFile, config.ACLPolicyFile)
+	authorizer := auth.New(config.ACLModelFile, config.ACLPolicyFile)
 	var telemetryExporter *exporter.LogExporter
 	if *debug{
 		metricsLogFile,err := ioutil.TempFile("","metrics-*.log")
