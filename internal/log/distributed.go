@@ -60,12 +60,14 @@ func (l *DistributedLog) setupRaft(dataDir string) error {
 	if err != nil {
 		return err
 	}
+
 	stableStore, err := raftboltdb.NewBoltStore(
 		filepath.Join(dataDir, "raft", "stable"),
 	)
 	if err != nil {
 		return err
 	}
+
 	retain := 1
 	snapshotStore, err := raft.NewFileSnapshotStore(
 		filepath.Join(dataDir, "raft"),
@@ -75,6 +77,7 @@ func (l *DistributedLog) setupRaft(dataDir string) error {
 	if err != nil {
 		return err
 	}
+
 	maxPool := 5
 	timeout := 10 * time.Second
 	transport := raft.NewNetworkTransport(
@@ -83,6 +86,7 @@ func (l *DistributedLog) setupRaft(dataDir string) error {
 		timeout,
 		os.Stderr,
 	)
+
 	config := raft.DefaultConfig()
 	config.LocalID = l.config.Raft.LocalID
 	if l.config.Raft.HeartbeatTimeout != 0 {
@@ -97,6 +101,7 @@ func (l *DistributedLog) setupRaft(dataDir string) error {
 	if l.config.Raft.CommitTimeout != 0 {
 		config.CommitTimeout = l.config.Raft.CommitTimeout
 	}
+
 	l.raft, err = raft.NewRaft(
 		config,
 		fsm,
@@ -172,6 +177,78 @@ func (l *DistributedLog) Read(offset uint64) (*api.Record, error) {
 	return l.log.Read(offset)
 }
 
+func (l *DistributedLog) Join(id, addr string) error {
+	configFuture := l.raft.GetConfiguration()
+	if err := configFuture.Error(); err != nil {
+		return err
+	}
+	serverID := raft.ServerID(id)
+	serverAddr := raft.ServerAddress(addr)
+	for _, srv := range configFuture.Configuration().Servers {
+		if srv.ID == serverID || srv.Address == serverAddr {
+			if srv.ID == serverID && srv.Address == serverAddr {
+				// server has already joined
+				return nil
+			}
+			// remove the existing server
+			removeFuture := l.raft.RemoveServer(serverID, 0, 0)
+			if err := removeFuture.Error(); err != nil {
+				return err
+			}
+		}
+	}
+	addFuture := l.raft.AddVoter(serverID, serverAddr, 0, 0)
+	if err := addFuture.Error(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *DistributedLog) Leave(id string) error {
+	removeFuture := l.raft.RemoveServer(raft.ServerID(id), 0, 0)
+	return removeFuture.Error()
+}
+
+func (l *DistributedLog) WaitForLeader(timeout time.Duration) error {
+	timeoutc := time.After(timeout)
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-timeoutc:
+			return fmt.Errorf("timed out")
+		case <-ticker.C:
+			if l := l.raft.Leader(); l != "" {
+				return nil
+			}
+		}
+	}
+}
+
+func (l *DistributedLog) Close() error {
+	f := l.raft.Shutdown()
+	if err := f.Error(); err != nil {
+		return err
+	}
+	return l.log.Close()
+}
+
+func (l *DistributedLog) GetServers() ([]*api.Server, error) {
+	future := l.raft.GetConfiguration()
+	if err := future.Error(); err != nil {
+		return nil, err
+	}
+	var servers []*api.Server
+	for _, server := range future.Configuration().Servers {
+		servers = append(servers, &api.Server{
+			Id:       string(server.ID),
+			RpcAddr:  string(server.Address),
+			IsLeader: l.raft.Leader() == server.Address,
+		})
+	}
+	return servers, nil
+}
+
 var _ raft.FSM = (*fsm)(nil)
 
 type fsm struct {
@@ -207,8 +284,8 @@ func (l *fsm) applyAppend(b []byte) interface{} {
 	return &api.ProduceResponse{Offset: offset}
 }
 
-func (l *fsm) Snapshot() (raft.FSMSnapshot, error) {
-	r := l.log.Reader()
+func (f *fsm) Snapshot() (raft.FSMSnapshot, error) {
+	r := f.log.Reader()
 	return &snapshot{reader: r}, nil
 }
 
@@ -277,9 +354,12 @@ func newLogStore(dir string, c Config) (*logStore, error) {
 func (l *logStore) FirstIndex() (uint64, error) {
 	return l.LowestOffset()
 }
+
 func (l *logStore) LastIndex() (uint64, error) {
-	return l.HighestOffset()
+	off, err := l.HighestOffset()
+	return off, err
 }
+
 func (l *logStore) GetLog(index uint64, out *raft.Log) error {
 	in, err := l.Read(index)
 	if err != nil {
@@ -300,7 +380,7 @@ func (l *logStore) StoreLogs(records []*raft.Log) error {
 		if _, err := l.Append(&api.Record{
 			Value: record.Data,
 			Term:  record.Term,
-			Type: uint32(record.Type),
+			Type:  uint32(record.Type),
 		}); err != nil {
 			return err
 		}
@@ -379,60 +459,4 @@ func (s *StreamLayer) Close() error {
 
 func (s *StreamLayer) Addr() net.Addr {
 	return s.ln.Addr()
-}
-
-func (l *DistributedLog) Join(id, addr string) error {
-	configFuture := l.raft.GetConfiguration()
-	if err := configFuture.Error(); err != nil {
-		return err
-	}
-	serverID := raft.ServerID(id)
-	serverAddr := raft.ServerAddress(addr)
-	for _, srv := range configFuture.Configuration().Servers {
-		if srv.ID == serverID || srv.Address == serverAddr {
-			if srv.ID == serverID && srv.Address == serverAddr {
-				// server has already joined
-				return nil
-			}
-			// remove the existing server
-			removeFuture := l.raft.RemoveServer(serverID, 0, 0)
-			if err := removeFuture.Error(); err != nil {
-				return err
-			}
-		}
-	}
-	addFuture := l.raft.AddVoter(serverID, serverAddr, 0, 0)
-	if err := addFuture.Error(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (l *DistributedLog) Leave(id string) error {
-	removeFuture := l.raft.RemoveServer(raft.ServerID(id), 0, 0)
-	return removeFuture.Error()
-}
-
-func (l *DistributedLog) WaitForLeader(timeout time.Duration) error {
-	timeoutc := time.After(timeout)
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-timeoutc:
-			return fmt.Errorf("timeout out")
-		case <-ticker.C:
-			if l := l.raft.Leader(); l != "" {
-				return nil
-			}
-		}
-	}
-}
-
-func (l *DistributedLog)Close()error{
-	f := l.raft.Shutdown()
-	if err := f.Error();err !=nil{
-		return err
-	}
-	return l.log.Close()
 }
