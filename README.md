@@ -8,3 +8,7 @@ $ curl -X POST localhost:8080 -d \
 $ curl -X GET localhost:8080 -d '{"offset": 0}'
 $ curl -X GET localhost:8080 -d '{"offset": 1}'
 $ curl -X GET localhost:8080 -d '{"offset": 2}'
+
+
+$ sudo kubectl create -f proglog.yml
+sudo kubectl delete -f proglog.yml

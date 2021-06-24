@@ -1,3 +1,7 @@
+TAG ?= 0.0.1
+build-docker:
+	docker build -t github.com/rezaamiri123/proglog:$(TAG) .
+
 CONFIG_PATH=${HOME}/.proglog/
 
 .PHONY: init
