@@ -30,3 +30,6 @@ $ helm install proglog deploy/proglog
 # load balancer:
 $ kubectl port-forward pod/proglog-0 8400 8400
 
+# run the command to request our service to get and print the list of
+# servers:
+$ go run cmd/getservers/main.go
