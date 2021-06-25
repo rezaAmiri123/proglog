@@ -19,3 +19,14 @@ $ helm template proglog
 #remove extra files
 $ rm proglog/templates/**/*.yaml proglog/templates/NOTES.tx
 
+# to see rendered helm
+$ helm template proglog deploy/proglog
+
+# Now, install the Chart by running this command:
+$ helm install proglog deploy/proglog
+
+# We can tell Kubernetes to forward a pod or a Service’s port to a port on your
+# computer so you can request a service running inside Kubernetes without a
+# load balancer:
+$ kubectl port-forward pod/proglog-0 8400 8400
+
