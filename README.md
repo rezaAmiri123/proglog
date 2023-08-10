@@ -1,17 +1,23 @@
 $ curl -X POST localhost:8080 -d \
-'{"record": {"value": "TGV0J3MgR28gIzEK"}}'
+'{"record": {"value": "TGV0J3MgR28gIzEK"}}'<br/>
 $ curl -X POST localhost:8080 -d \
-'{"record": {"value": "TGV0J3MgR28gIzIK"}}'
+'{"record": {"value": "TGV0J3MgR28gIzIK"}}'<br/>
 $ curl -X POST localhost:8080 -d \
-'{"record": {"value": "TGV0J3MgR28gIzMK"}}'
+'{"record": {"value": "TGV0J3MgR28gIzMK"}}'<br/>
 
-$ curl -X GET localhost:8080 -d '{"offset": 0}'
-$ curl -X GET localhost:8080 -d '{"offset": 1}'
-$ curl -X GET localhost:8080 -d '{"offset": 2}'
+$ curl -X GET localhost:8080 -d '{"offset": 0}'<br/>
+$ curl -X GET localhost:8080 -d '{"offset": 1}'<br/>
+$ curl -X GET localhost:8080 -d '{"offset": 2}'<br/>
+
+. Record—the data stored in our log.<br/>
+• Store—the file we store records in.<br/>
+• Index—the file we store index entries in.<br/>
+• Segment—the abstraction that ties a store and an index together.<br/>
+• Log—the abstraction that ties all the segments together.<br/>
 
 
-$ sudo kubectl create -f proglog.yml
-sudo kubectl delete -f proglog.yml
+$ sudo kubectl create -f proglog.yml<br/>
+sudo kubectl delete -f proglog.yml<br/>
 
 # to see rendered template
 $ helm template proglog
