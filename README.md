@@ -15,6 +15,11 @@ $ curl -X GET localhost:8080 -d '{"offset": 2}'<br/>
 • Segment—the abstraction that ties a store and an index together.<br/>
 • Log—the abstraction that ties all the segments together.<br/>
 
+• C—country<br/>
+• L—locality or municipality (such as city)<br/>
+• ST—state or province<br/>
+• O—organization<br/>
+• OU—organizational unit (such as the department responsible for owning the key)<br/>
 
 $ sudo kubectl create -f proglog.yml<br/>
 sudo kubectl delete -f proglog.yml<br/>
