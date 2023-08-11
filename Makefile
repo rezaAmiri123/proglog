@@ -67,6 +67,8 @@ test: $(CONFIG_PATH)/policy.csv $(CONFIG_PATH)/model.conf
 	go test -race ./...
 # END: auth
 
+test-debug:
+
 
 .PHONY: compile
 compile:
