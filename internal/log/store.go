@@ -3,6 +3,7 @@ package log
 import (
 	"bufio"
 	"encoding/binary"
+	"fmt"
 	"os"
 	"sync"
 )
@@ -48,6 +49,7 @@ func (s *store) Append(p []byte) (n, pos uint64, err error) {
 	}
 	w += lenWidth
 	s.size += uint64(w)
+	fmt.Println("store append called: ", p)
 	return uint64(w), pos, nil
 }
 func (s *store) Read(pos uint64) ([]byte, error) {
