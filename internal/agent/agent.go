@@ -101,7 +101,7 @@ func (a *Agent) setupMux() error {
 		return err
 	}
 	rpcAddr := fmt.Sprintf(
-		":%s:%d",
+		"%s:%d",
 		addr.IP.String(),
 		a.Config.RPCPort,
 	)
