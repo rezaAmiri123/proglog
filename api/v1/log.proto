@@ -4,13 +4,15 @@ package log.v1;
 
 option go_package ="github.com/rezaAmiri123/proglog/api/log_v1";
 
-service Log{
-  rpc Produce(ProduceRequest) returns (ProduceResponse){}
-  rpc Consume(ConsumeRequest) returns (ConsumeResponse){}
-  rpc ConsumeStream(ConsumeRequest)returns(stream ConsumeResponse){}
-  rpc ProduceStream(stream ProduceRequest) returns(stream ProduceResponse){}
+service Log {
+  rpc Produce(ProduceRequest) returns (ProduceResponse) {}
+  rpc Consume(ConsumeRequest) returns (ConsumeResponse) {}
+  rpc ConsumeStream(ConsumeRequest) returns (stream ConsumeResponse) {}
+  rpc ProduceStream(stream ProduceRequest) returns (stream ProduceResponse) {}
 }
+// END: service
 
+// START: apis
 message ProduceRequest  {
   Record record = 1;
 }
@@ -24,11 +26,15 @@ message ConsumeRequest {
 }
 
 message ConsumeResponse {
-  Record record = 1;
+  Record record = 2;
 }
+// END: apis
 
-
-message Record{
+// START: record
+message Record {
   bytes value = 1;
   uint64 offset = 2;
+  uint64 term = 3;
+  uint32 type = 4;
 }
+// END: record

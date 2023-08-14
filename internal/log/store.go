@@ -1,9 +1,9 @@
+// START: intro
 package log
 
 import (
 	"bufio"
 	"encoding/binary"
-	"fmt"
 	"os"
 	"sync"
 )
@@ -23,7 +23,7 @@ type store struct {
 	size uint64
 }
 
-func NewStore(f *os.File) (*store, error) {
+func newStore(f *os.File) (*store, error) {
 	fi, err := os.Stat(f.Name())
 	if err != nil {
 		return nil, err
@@ -36,7 +36,10 @@ func NewStore(f *os.File) (*store, error) {
 	}, nil
 }
 
-func (s *store) Append(p []byte) (n, pos uint64, err error) {
+// END: intro
+
+// START: append
+func (s *store) Append(p []byte) (n uint64, pos uint64, err error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	pos = s.size
@@ -49,9 +52,12 @@ func (s *store) Append(p []byte) (n, pos uint64, err error) {
 	}
 	w += lenWidth
 	s.size += uint64(w)
-	fmt.Println("store append called: ", p)
 	return uint64(w), pos, nil
 }
+
+// END: append
+
+// START: readat
 func (s *store) Read(pos uint64) ([]byte, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -68,15 +74,22 @@ func (s *store) Read(pos uint64) ([]byte, error) {
 	}
 	return b, nil
 }
+
+// END: readat
+
+// START: rawreadat
 func (s *store) ReadAt(p []byte, off int64) (int, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-
 	if err := s.buf.Flush(); err != nil {
 		return 0, err
 	}
 	return s.File.ReadAt(p, off)
 }
+
+// END: rawreadat
+
+// START: close
 func (s *store) Close() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -86,3 +99,5 @@ func (s *store) Close() error {
 	}
 	return s.File.Close()
 }
+
+// END: close
