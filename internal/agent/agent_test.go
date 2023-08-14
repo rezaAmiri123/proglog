@@ -8,6 +8,7 @@ import (
 	api "github.com/rezaAmiri123/proglog/api/v1"
 	"github.com/rezaAmiri123/proglog/internal/agent"
 	"github.com/rezaAmiri123/proglog/internal/config"
+	"github.com/rezaAmiri123/proglog/internal/loadbalance"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -50,17 +51,12 @@ func TestAgent(t *testing.T) {
 
 		var startJoinAddrs []string
 		if i != 0 {
-			startJoinAddrs = append(
-				startJoinAddrs,
-				agents[0].Config.BindAddr,
-			)
+			startJoinAddrs = append(startJoinAddrs, agents[0].Config.BindAddr)
 		}
 
 		agent, err := agent.New(agent.Config{
-			NodeName: fmt.Sprintf("%d", i),
-			// START: agent_config
-			Bootstrap: i == 0,
-			// END: agent_config
+			NodeName:        fmt.Sprintf("%d", i),
+			Bootstrap:       i == 0,
 			StartJoinAddrs:  startJoinAddrs,
 			BindAddr:        bindAddr,
 			RPCPort:         rpcPort,
@@ -77,7 +73,8 @@ func TestAgent(t *testing.T) {
 	defer func() {
 		for _, agent := range agents {
 			_ = agent.Shutdown()
-			require.NoError(t,
+			require.NoError(
+				t,
 				os.RemoveAll(agent.Config.DataDir),
 			)
 		}
@@ -96,20 +93,13 @@ func TestAgent(t *testing.T) {
 		},
 	)
 	require.NoError(t, err)
-	consumeResponse, err := leaderClient.Consume(
-		context.Background(),
-		&api.ConsumeRequest{
-			Offset: produceResponse.Offset,
-		},
-	)
-	require.NoError(t, err)
-	require.Equal(t, consumeResponse.Record.Value, []byte("foo"))
 
+	// START: test_change
 	// wait until replication has finished
 	time.Sleep(3 * time.Second)
 
-	followerClient := client(t, agents[1], peerTLSConfig)
-	consumeResponse, err = followerClient.Consume(
+	//START: leader_check
+	consumeResponse, err := leaderClient.Consume( // <label id="produce" />
 		context.Background(),
 		&api.ConsumeRequest{
 			Offset: produceResponse.Offset,
@@ -118,28 +108,40 @@ func TestAgent(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, consumeResponse.Record.Value, []byte("foo"))
 
-	// START: test_replication
-	consumeResponse, err = leaderClient.Consume(
+	followerClient := client(t, agents[1], peerTLSConfig)
+	consumeResponse, err = followerClient.Consume( // <label id="follower" />
 		context.Background(),
 		&api.ConsumeRequest{
-			Offset: produceResponse.Offset + 1,
+			Offset: produceResponse.Offset,
 		},
 	)
-	require.Nil(t, consumeResponse)
-	require.Error(t, err)
-	got := grpc.Code(err)
-	want := grpc.Code(api.ErrOffsetOutOfRange{}.GRPCStatus().Err())
-	require.Equal(t, got, want)
-	// END: test_replication
+	require.NoError(t, err)
+	require.Equal(t, consumeResponse.Record.Value, []byte("foo"))
+	// END: test_change
 }
 
-func client(t *testing.T, agent *agent.Agent, tlsConfig *tls.Config) api.LogClient {
+// START: client
+func client(
+	t *testing.T,
+	agent *agent.Agent,
+	tlsConfig *tls.Config,
+) api.LogClient {
 	tlsCreds := credentials.NewTLS(tlsConfig)
-	opts := []grpc.DialOption{grpc.WithTransportCredentials(tlsCreds)}
+	opts := []grpc.DialOption{
+		grpc.WithTransportCredentials(tlsCreds),
+	}
 	rpcAddr, err := agent.Config.RPCAddr()
 	require.NoError(t, err)
-	conn, err := grpc.Dial(rpcAddr, opts...)
+	// START_HIGHLIGHT
+	conn, err := grpc.Dial(fmt.Sprintf(
+		"%s:///%s",
+		loadbalance.Name,
+		rpcAddr,
+	), opts...)
+	// END_HIGHLIGHT
 	require.NoError(t, err)
 	client := api.NewLogClient(conn)
 	return client
 }
+
+// END: client
