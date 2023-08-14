@@ -2,7 +2,6 @@ package log
 
 import (
 	"context"
-	"fmt"
 	api "github.com/rezaAmiri123/proglog/api/v1"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -73,11 +72,9 @@ func (r *Replicator) replicate(addr string, leave chan struct{}) {
 		for {
 			recv, err := stream.Recv()
 			if err != nil {
-				fmt.Println("xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx ", err.Error())
 				r.logError(err, "failed to receive", addr)
 				return
 			}
-			fmt.Println("receive replication: ", recv.Record.GetValue())
 			records <- recv.Record
 		}
 	}()
